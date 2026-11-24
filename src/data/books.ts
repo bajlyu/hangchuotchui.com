@@ -172,6 +172,7 @@ export const DRIFTWALL_COPY_STORAGE_KEY = 'hang_chuot_chui_driftwall_copy_v1';
 export const TAG_SIDEBAR_STORAGE_KEY = 'hang_chuot_chui_tag_sidebar_v1';
 export const AUTHOR_PROFILES_STORAGE_KEY = 'hang_chuot_chui_author_profiles_v1';
 export const AUTHOR_SECTION_TITLE_STORAGE_KEY = 'hang_chuot_chui_author_section_title_v1';
+export const HIDDEN_AUTHORS_STORAGE_KEY = 'hang_chuot_chui_hidden_authors_v1';
 
 export const DEFAULT_AUTHOR_PROFILES: AuthorProfile[] = [
   {id: 'a1', name: 'Haruki Murakami', avatar: COVER_IMAGES[0]},

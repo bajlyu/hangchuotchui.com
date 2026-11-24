@@ -11,6 +11,7 @@ interface LibraryScreenProps {
   activeTags: string[];
   tagConfig: TagSidebarConfig;
   authorProfiles: AuthorProfile[];
+  hiddenAuthorNames: string[];
   authorSectionTitle: string;
   themePreset: ThemePreset;
   driftSpeed: number;
@@ -20,7 +21,7 @@ interface LibraryScreenProps {
   onChangeAuthorSectionTitle: (next: string) => void;
   onAddAuthorProfile: (profile: AuthorProfile) => void;
   onUpdateAuthorProfile: (updated: AuthorProfile, previousName?: string) => void;
-  onDeleteAuthorProfile: (profileId: string) => void;
+  onDeleteAuthorProfile: (profile: AuthorProfile) => void;
   onResetAuthorProfiles: () => void;
   onBackToHero: () => void;
   onOpenSettings: () => void;
@@ -37,6 +38,7 @@ export function LibraryScreen({
   activeTags,
   tagConfig,
   authorProfiles,
+  hiddenAuthorNames,
   authorSectionTitle,
   themePreset,
   driftSpeed,
@@ -307,6 +309,7 @@ export function LibraryScreen({
         <AuthorProfileSection
           books={books}
           authorProfiles={authorProfiles}
+          hiddenAuthorNames={hiddenAuthorNames}
           sectionTitle={authorSectionTitle}
           onChangeSectionTitle={onChangeAuthorSectionTitle}
           onAddAuthorProfile={onAddAuthorProfile}

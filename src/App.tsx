@@ -17,6 +17,7 @@ import {
   DEFAULT_TAG_SIDEBAR_CONFIG,
   DRIFTWALL_COPY_STORAGE_KEY,
   getBookTags,
+  HIDDEN_AUTHORS_STORAGE_KEY,
   SPEED_STORAGE_KEY,
   STORAGE_KEY,
   TAG_SIDEBAR_STORAGE_KEY,
@@ -97,7 +98,7 @@ function loadSavedAuthorProfiles(): AuthorProfile[] {
     const raw = localStorage.getItem(AUTHOR_PROFILES_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      if (Array.isArray(parsed)) {
         return parsed;
       }
     }
@@ -105,6 +106,21 @@ function loadSavedAuthorProfiles(): AuthorProfile[] {
     // Fallback
   }
   return DEFAULT_AUTHOR_PROFILES;
+}
+
+function loadSavedHiddenAuthors(): string[] {
+  try {
+    const raw = localStorage.getItem(HIDDEN_AUTHORS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((item): item is string => typeof item === 'string');
+      }
+    }
+  } catch {
+    // Fallback
+  }
+  return [];
 }
 
 function loadSavedAuthorSectionTitle(): string {
@@ -123,6 +139,7 @@ export default function App() {
   const [tagConfig, setTagConfig] = useState<TagSidebarConfig>(loadSavedTagConfig);
   const [activeTags, setActiveTags] = useState<string[]>(() => [loadSavedTagConfig().tags[0] || 'Tất cả']);
   const [authorProfiles, setAuthorProfiles] = useState<AuthorProfile[]>(loadSavedAuthorProfiles);
+  const [hiddenAuthorNames, setHiddenAuthorNames] = useState<string[]>(loadSavedHiddenAuthors);
   const [authorSectionTitle, setAuthorSectionTitle] = useState<string>(loadSavedAuthorSectionTitle);
   const [selectedAuthor, setSelectedAuthor] = useState<string | null>(null);
   const [themePreset, setThemePreset] = useState<ThemePreset>(loadSavedTheme);
@@ -177,6 +194,14 @@ export default function App() {
       // Ignore storage errors
     }
   }, [authorSectionTitle]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HIDDEN_AUTHORS_STORAGE_KEY, JSON.stringify(hiddenAuthorNames));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [hiddenAuthorNames]);
 
   useEffect(() => {
     try {
@@ -270,32 +295,67 @@ export default function App() {
   };
 
   const handleAddAuthorProfile = (profile: AuthorProfile) => {
-    setAuthorProfiles((prev) => [...prev, profile]);
+    const normalized = profile.name.trim().toLowerCase();
+    setHiddenAuthorNames((prev) => prev.filter((name) => name !== normalized));
+    setAuthorProfiles((prev) => {
+      const exists = prev.some((p) => p.name.trim().toLowerCase() === normalized);
+      if (exists) {
+        return prev.map((p) => (p.name.trim().toLowerCase() === normalized ? {...p, avatar: profile.avatar} : p));
+      }
+      return [...prev, profile];
+    });
   };
 
   const handleUpdateAuthorProfile = (updated: AuthorProfile, previousName?: string) => {
+    const cleanNewName = updated.name.trim();
+    const normalizedNew = cleanNewName.toLowerCase();
+    const normalizedPrev = previousName?.trim().toLowerCase();
+
+    if (normalizedNew) {
+      setHiddenAuthorNames((prev) => prev.filter((n) => n !== normalizedNew));
+    }
+
     setAuthorProfiles((prev) => {
-      const exists = prev.some((p) => p.id === updated.id);
-      return exists ? prev.map((p) => (p.id === updated.id ? updated : p)) : [...prev, updated];
+      const existsById = prev.some((p) => p.id === updated.id);
+      if (existsById) {
+        return prev.map((p) => (p.id === updated.id ? {...updated, name: cleanNewName || p.name} : p));
+      }
+      if (normalizedPrev) {
+        const existsByName = prev.some((p) => p.name.trim().toLowerCase() === normalizedPrev);
+        if (existsByName) {
+          return prev.map((p) =>
+            p.name.trim().toLowerCase() === normalizedPrev ? {...updated, name: cleanNewName || p.name} : p,
+          );
+        }
+      }
+      return [...prev, {...updated, name: cleanNewName || updated.name}];
     });
-    if (previousName && updated.name.trim() && previousName !== updated.name) {
+
+    if (previousName && cleanNewName && previousName.trim() !== cleanNewName) {
       setBooks((prev) =>
         prev.map((b) =>
-          b.author.toLowerCase() === previousName.toLowerCase() ? {...b, author: updated.name} : b,
+          b.author.trim().toLowerCase() === previousName.trim().toLowerCase() ? {...b, author: cleanNewName} : b,
         ),
       );
-      if (selectedAuthor && selectedAuthor.toLowerCase() === previousName.toLowerCase()) {
-        setSelectedAuthor(updated.name);
+      if (selectedAuthor && selectedAuthor.trim().toLowerCase() === previousName.trim().toLowerCase()) {
+        setSelectedAuthor(cleanNewName);
       }
     }
   };
 
-  const handleDeleteAuthorProfile = (profileId: string) => {
-    setAuthorProfiles((prev) => (prev.length > 1 ? prev.filter((p) => p.id !== profileId) : prev));
+  const handleDeleteAuthorProfile = (profile: AuthorProfile) => {
+    const normalizedName = profile.name.trim().toLowerCase();
+    setAuthorProfiles((prev) =>
+      prev.filter((p) => p.id !== profile.id && p.name.trim().toLowerCase() !== normalizedName),
+    );
+    if (normalizedName) {
+      setHiddenAuthorNames((prev) => (prev.includes(normalizedName) ? prev : [...prev, normalizedName]));
+    }
   };
 
   const handleResetAuthorProfiles = () => {
     setAuthorProfiles(DEFAULT_AUTHOR_PROFILES);
+    setHiddenAuthorNames([]);
     setAuthorSectionTitle('Chọn tác giả');
   };
 
@@ -315,6 +375,7 @@ export default function App() {
           activeTags={activeTags}
           tagConfig={tagConfig}
           authorProfiles={authorProfiles}
+          hiddenAuthorNames={hiddenAuthorNames}
           authorSectionTitle={authorSectionTitle}
           themePreset={themePreset}
           driftSpeed={driftSpeed}
